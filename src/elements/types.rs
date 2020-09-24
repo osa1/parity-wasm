@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use crate::io;
 use super::{
-	Deserialize, Serialize, Error, VarUint7, VarInt7, CountedList,
+	Deserialize, Serialize, Error, VarUint7, VarInt7, VarInt32, CountedList,
 	CountedListWriter,
 };
 use core::fmt;
@@ -102,13 +102,15 @@ pub enum BlockType {
 	Value(ValueType),
 	/// No specified block type
 	NoResult,
+	/// Block type specified as type index
+	TypeIdx(u32),
 }
 
 impl Deserialize for BlockType {
 	type Error = Error;
 
 	fn deserialize<R: io::Read>(reader: &mut R) -> Result<Self, Self::Error> {
-		let val = VarInt7::deserialize(reader)?;
+		let val = VarInt32::deserialize(reader)?;
 
 		match val.into() {
 			-0x01 => Ok(BlockType::Value(ValueType::I32)),
@@ -118,7 +120,8 @@ impl Deserialize for BlockType {
 			#[cfg(feature="simd")]
 			0x7b => Ok(BlockType::Value(ValueType::V128)),
 			-0x40 => Ok(BlockType::NoResult),
-			_ => Err(Error::UnknownValueType(val.into())),
+			other if other > 0 => Ok(BlockType::TypeIdx(other as u32)),
+			other => Err(Error::UnknownBlockType(other.into())),
 		}
 	}
 }
@@ -127,16 +130,17 @@ impl Serialize for BlockType {
 	type Error = Error;
 
 	fn serialize<W: io::Write>(self, writer: &mut W) -> Result<(), Self::Error> {
-		let val: VarInt7 = match self {
-			BlockType::NoResult => -0x40i8,
+		let val: i32 = match self {
+			BlockType::NoResult => -0x40,
 			BlockType::Value(ValueType::I32) => -0x01,
 			BlockType::Value(ValueType::I64) => -0x02,
 			BlockType::Value(ValueType::F32) => -0x03,
 			BlockType::Value(ValueType::F64) => -0x04,
 			#[cfg(feature="simd")]
 			BlockType::Value(ValueType::V128) => 0x7b,
-		}.into();
-		val.serialize(writer)?;
+			BlockType::TypeIdx(type_ref) => type_ref as i32,
+		};
+		VarInt32::from(val).serialize(writer)?;
 		Ok(())
 	}
 }
