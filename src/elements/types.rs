@@ -120,7 +120,7 @@ impl Deserialize for BlockType {
 			#[cfg(feature="simd")]
 			0x7b => Ok(BlockType::Value(ValueType::V128)),
 			-0x40 => Ok(BlockType::NoResult),
-			other if other > 0 => Ok(BlockType::TypeIdx(other as u32)),
+			other if other >= 0 => Ok(BlockType::TypeIdx(other as u32)),
 			other => Err(Error::UnknownBlockType(other.into())),
 		}
 	}
