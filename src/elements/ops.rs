@@ -1368,7 +1368,7 @@ impl Deserialize for Instruction {
 				F64REINTERPRETI64 => F64ReinterpretI64,
 
 				TRUNC_SAT_PREFIX => {
-					let val: u32 = Uint32::deserialize(reader)?.into();
+					let val: u32 = VarUint32::deserialize(reader)?.into();
 					match val {
 						I32_TRUNC_SAT_F32_S => I32TruncSatSF32,
 						I32_TRUNC_SAT_F32_U => I32TruncSatUF32,
